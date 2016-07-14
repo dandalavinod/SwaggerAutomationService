@@ -6,6 +6,8 @@ import com.ibmwatsonhealth.devopsservices.swaggertestasset.EndpointOperationType
 import com.ibmwatsonhealth.devopsservices.swaggertestasset.SwaggerUtility;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Response;
+import com.jayway.restassured.specification.RequestSpecification;
+import com.jayway.restassured.specification.ResponseSpecification;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
@@ -21,29 +23,30 @@ public class TestNGTestSuite {
 
 	@SuppressWarnings("rawtypes")
 	@DataProvider(name = "dbconfig")
-	public Object[][] provideDbConfig(ITestContext context){
+	public Object[][] provideDbConfig(ITestContext context) {
 
 		Map<Object, Object> map = SwaggerUtility
 		.getSwaggerData(context.getCurrentXmlTest().getParameter("swaggerPath"));
-		//Map<Object, Object> map = SwaggerUtility.getSwaggerData("http://petstore.swagger.io/v2/swagger.json");
+		//Map<Object, Object> map = SwaggerTestUtility.getSwaggerData(
+				//"http://watsondop05.rch.stglabs.ibm.com:9103/services/term_mapping/api/swagger/swagger.json");
 		Object[][] arr = null;
-		try{
-		arr = new Object[map.size()][2];
-		Set entries = map.entrySet();
-		Iterator entriesIterator = entries.iterator();
-		int i = 0;
-		while (entriesIterator.hasNext()) {
+		try {
+			arr = new Object[map.size()][2];
+			Set entries = map.entrySet();
+			Iterator entriesIterator = entries.iterator();
+			int i = 0;
+			while (entriesIterator.hasNext()) {
 
-			Map.Entry mapping = (Map.Entry) entriesIterator.next();
-			EndpointOperationType endpointtype = (EndpointOperationType) mapping.getKey();
-			arr[i][0] = endpointtype.getEndpoint() + "," + endpointtype.getOperation();
-			arr[i][1] = mapping.getValue();
-			i++;
-		}
-		}catch(Exception e){
+				Map.Entry mapping = (Map.Entry) entriesIterator.next();
+				EndpointOperationType endpointtype = (EndpointOperationType) mapping.getKey();
+				arr[i][0] = endpointtype.getEndpoint() + "," + endpointtype.getOperation();
+				arr[i][1] = mapping.getValue();
+				i++;
+			}
+		} catch (Exception e) {
 			Assert.fail("Swagger parser was unsuccessful for the swagger path provided. Cannot start test framework");
 		}
-		
+
 		return arr;
 	}
 
@@ -63,12 +66,14 @@ public class TestNGTestSuite {
 
 			case "get":
 
-				if (TestNGTestSuite.hasPathParameterResolved(endpointOutput)) {
-					Response rep = RestAssured.given().contentType("application/json").when().get(url);
+				// Response rep =
+				// RestAssured.given().accept("application/json").when().get(url);
+				RequestSpecification request = requestBuilder(dataMap);
+				if (request != null) {
+					Response rep = request.when().get(url);
 					Assert.assertEquals(rep.getStatusCode(), HttpStatus.SC_OK);
-					
 				} else {
-					Assert.fail("DOCUMENTATION ERROR:Path parameter is unresolved for endpoint " + endpointOutput);
+					Assert.fail("Request was not successfully generated for " + endpointOutput);
 				}
 
 				break;
@@ -81,7 +86,6 @@ public class TestNGTestSuite {
 						// Valid data
 						String schema = (String) ((Map) dataMap.get("validdata")).get("schema");
 						String body = (String) ((Map) dataMap.get("validdata")).get("data");
-						
 
 						Response rep = RestAssured.given().contentType(schema).when().body(body).post(url);
 						softAssert.assertEquals(rep.getStatusCode(), HttpStatus.SC_OK);
@@ -97,21 +101,20 @@ public class TestNGTestSuite {
 						Assert.fail("DOCUMENTATION ERROR : Example data is missing or no Consumes section for endpoint"
 								+ endpointOutput + " and operation " + endpointOperationOutput.toLowerCase());
 					}
-					
+
 				} else {
 					Assert.fail("DOCUMENTATION ERROR: Path parameter is unresolved for endpoint " + endpointOutput);
 				}
 				break;
 
 			case "put":
-				
+
 				if (TestNGTestSuite.hasPathParameterResolved(endpointOutput)) {
 					if (dataMap.get("validdata") != null) {
 
 						// Valid data
 						String schema = (String) ((Map) dataMap.get("validdata")).get("schema");
 						String body = (String) ((Map) dataMap.get("validdata")).get("data");
-						
 
 						Response rep = RestAssured.given().contentType(schema).when().body(body).put(url);
 						softAssert.assertEquals(rep.getStatusCode(), HttpStatus.SC_OK);
@@ -127,7 +130,7 @@ public class TestNGTestSuite {
 						Assert.fail("DOCUMENTATION ERROR : Example data is missing or no Consumes section for endpoint"
 								+ endpointOutput + " and operation " + endpointOperationOutput.toLowerCase());
 					}
-					
+
 				} else {
 					Assert.fail("DOCUMENTATION ERROR: Path parameter is unresolved for endpoint " + endpointOutput);
 				}
@@ -137,13 +140,13 @@ public class TestNGTestSuite {
 				if (TestNGTestSuite.hasPathParameterResolved(endpointOutput)) {
 					Response rep = RestAssured.given().contentType("application/json").when().delete(url);
 					Assert.assertEquals(rep.getStatusCode(), HttpStatus.SC_OK);
-					
+
 				} else {
 					Assert.fail("DOCUMENTATION ERROR:Path parameter is unresolved for endpoint " + endpointOutput);
 				}
 				break;
 			default:
-				Assert.fail("SWAGGER SERVICE FAILURE: Currentl version does not support operation "
+				Assert.fail("SWAGGER SERVICE FAILURE: Current version does not support operation "
 						+ endpointOperationOutput.toLowerCase());
 			}
 
@@ -160,6 +163,26 @@ public class TestNGTestSuite {
 			return true;
 		}
 
+	}
+
+	@SuppressWarnings("unchecked")
+	public static RequestSpecification requestBuilder(Map<Object, Object> dataMap) {
+		RequestSpecification request = null;
+		request = RestAssured.given();
+		Map<String, Object> queryParameterMap = (Map<String, Object>) dataMap.get("queryParameters");
+		if (!queryParameterMap.isEmpty()) {
+			request = request.queryParams(queryParameterMap);
+		}
+		Map<String, Object> pathParameterMap = (Map<String, Object>) dataMap.get("pathParameters");
+		if (!pathParameterMap.isEmpty()) {
+			request = request.pathParams(pathParameterMap);
+		}
+		return request;
+	}
+
+	public static ResponseSpecification responseBuilder(Map<Object, Object> dataMap) {
+		ResponseSpecification response = null;
+		return response;
 	}
 
 }

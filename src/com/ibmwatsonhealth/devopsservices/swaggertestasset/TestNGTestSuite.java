@@ -9,26 +9,34 @@ import com.jayway.restassured.response.Response;
 import com.jayway.restassured.specification.RequestSpecification;
 import com.jayway.restassured.specification.ResponseSpecification;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import org.apache.http.HttpStatus;
 import org.testng.Assert;
+import org.testng.ITest;
 import org.testng.ITestContext;
+import org.testng.TestException;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 
-public class TestNGTestSuite {
+public class TestNGTestSuite implements ITest {
 
 	private SoftAssert softAssert = new SoftAssert();
+	private static Map<Object,Object> map;
+	protected String mTestCaseName = "";
 
 	@SuppressWarnings("rawtypes")
 	@DataProvider(name = "dbconfig")
 	public Object[][] provideDbConfig(ITestContext context) {
 
-		Map<Object, Object> map = SwaggerUtility
+		
+		map = SwaggerUtility
 		.getSwaggerData(context.getCurrentXmlTest().getParameter("swaggerPath"));
-		//Map<Object, Object> map = SwaggerTestUtility.getSwaggerData(
+		//map = SwaggerUtility.getSwaggerData(
 				//"http://watsondop05.rch.stglabs.ibm.com:9103/services/term_mapping/api/swagger/swagger.json");
+		
 		Object[][] arr = null;
 		try {
 			arr = new Object[map.size()][2];
@@ -43,11 +51,19 @@ public class TestNGTestSuite {
 				arr[i][1] = mapping.getValue();
 				i++;
 			}
-		} catch (Exception e) {
-			Assert.fail("Swagger parser was unsuccessful for the swagger path provided. Cannot start test framework");
+		} catch (Throwable e) {
+			e.printStackTrace();
 		}
 
 		return arr;
+	}
+	
+	@Test
+	public void swaggerTestServiceConfigurationStatus(){
+		if(map == null){
+			Assert.fail("Swagger Test service could not be executed for input swagger document. Check authorisation and access route to the Swagger Test Service");
+		}
+		
 	}
 
 	// Run tests once for every endpoint and operation combination
@@ -154,6 +170,24 @@ public class TestNGTestSuite {
 			Assert.fail(" SWAGGER SERVICE FAILURE: Something went wrong with the test method");
 		}
 	}
+	
+	  @BeforeMethod(alwaysRun = true)
+	    public void testData(Method method,Object[] testData) {
+		    System.out.println(method.getName().toLowerCase());
+	        if (testData != null && !(method.getName().toLowerCase().equals("swaggertestserviceconfigurationstatus"))) {
+	        	String sPath = ((String) testData[0]).split(",")[0];
+	        	String sOperation = ((String) testData[0]).split(",")[1];
+	        	this.mTestCaseName = "PATH:"+ sPath + " " + "OPERATION:" + sOperation;
+	        }else{
+	        	this.mTestCaseName = method.getName();
+	        }
+	        
+	    }
+
+	    @Override
+	    public String getTestName() {
+	        return this.mTestCaseName;
+	    }
 
 	public static boolean hasPathParameterResolved(String endPoint) {
 

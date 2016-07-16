@@ -49,21 +49,16 @@ public class SwaggerExecutionEngine {
 		System.out.println(System.getProperty("user.dir"));
 		myTestNG.setOutputDirectory(System.getProperty("user.dir"));
 		myTestNG.run();
-		//check if the framework has a skip
-		//myTestNG.hasSkip();
-		// if framework had a test skipped 
-
+		
 		try {
 			System.out.println("Start with the swagger output file extraction");
 			String testframeworkoutputPath = System.getProperty("user.dir") + "/SwaggerSuite/SwaggerTest.xml";
+			System.out.println("Test results are present in " + System.getProperty("user.dir"));
 			File file = new File(testframeworkoutputPath);
 			// Set output of test framework here
 			output = new TestFrameworkOutput();
-			if(myTestNG.hasSkip()){
-				output.setResponseCode(1);
-			}else{
-				output.setResponseCode(myTestNG.getStatus());
-			}
+			output.setResponseCode(myTestNG.getStatus());
+			System.out.println(myTestNG.getStatus());
 			// output.setJunitoutput(junitresult);
 
 		} catch (Exception e) {

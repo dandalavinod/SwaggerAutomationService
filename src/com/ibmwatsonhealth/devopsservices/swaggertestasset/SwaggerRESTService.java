@@ -51,19 +51,27 @@ public class SwaggerRESTService {
 			String swaggerPath = jsonObject.getString("swaggerURL");
 			engine = new SwaggerExecutionEngine();
 			TestFrameworkOutput executionOutput = engine.executeTestFramework(swaggerPath);
-			responsecode = executionOutput.getResponseCode();
-			String testframeworkoutputPath = System.getProperty("user.dir") + "/SwaggerSuite/SwaggerTest.xml";
-			DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-			InputStream inputStream = new FileInputStream(new File(testframeworkoutputPath));
-			org.w3c.dom.Document doc = documentBuilderFactory.newDocumentBuilder().parse(inputStream);
-			StringWriter stw = new StringWriter();
-			Transformer serializer = TransformerFactory.newInstance().newTransformer();
-			serializer.transform(new DOMSource(doc), new StreamResult(stw));
-			frameworkoutput = stw.toString();
+			if(executionOutput != null){
+				responsecode = executionOutput.getResponseCode();
+				String testframeworkoutputPath = System.getProperty("user.dir") + "/SwaggerSuite/SwaggerTest.xml";
+				DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+				InputStream inputStream = new FileInputStream(new File(testframeworkoutputPath));
+				org.w3c.dom.Document doc = documentBuilderFactory.newDocumentBuilder().parse(inputStream);
+				StringWriter stw = new StringWriter();
+				Transformer serializer = TransformerFactory.newInstance().newTransformer();
+				serializer.transform(new DOMSource(doc), new StreamResult(stw));
+				frameworkoutput = stw.toString();
+				System.out.println("SERVER NEVER FOUND ANY PROBLEM");
+				
+			}else{
+				throw new RuntimeException("Swagger Test framework failed to process the request");
+			}
+			
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Swagger Service failed").build();
+			System.out.println("SERVER THREW AN EXCEPTION");
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Swagger Service failed").header("teststatus", 1).build();
 		}
 		// Send valid xml response back to client
 		return Response.status(Response.Status.OK).entity(frameworkoutput).header("teststatus", responsecode).build();
